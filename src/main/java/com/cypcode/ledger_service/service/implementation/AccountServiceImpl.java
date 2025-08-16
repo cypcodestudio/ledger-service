@@ -79,6 +79,7 @@ public class AccountServiceImpl implements AccountService {
                 .name(account.getName())
                 .balance(account.getBalance())
                 .type(account.getType())
+                .version(account.getVersion())
                 .build();
     }
 
