@@ -9,13 +9,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
+@CrossOrigin("*")
+@Validated
 @RestController
 @RequestMapping("accounts")
 @Tag(name = "Accounts", description = "APIs for managing Accounts")
@@ -34,7 +38,7 @@ public class AccountController {
                     content = @Content(schema = @Schema()))
     })
     @PostMapping()
-    public ResponseEntity<?> addAccount(@RequestBody AccountDTO payload) {
+    public ResponseEntity<?> addAccount(@RequestBody @Valid AccountDTO payload) {
         try{
             AccountDTO response = accountService.createAccount(payload);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);

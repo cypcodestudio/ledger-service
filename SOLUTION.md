@@ -62,4 +62,5 @@ For detailed interface process, the flow of events:
 
 
 ### Transfer Service References
-The service swagger: http://localhost:8081/api/docs
+Service status: http://localhost:8081/actuator/health
+The service swagger: http://localhost:8081/swagger-ui/index.html/

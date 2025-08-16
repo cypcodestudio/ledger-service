@@ -30,6 +30,16 @@ public class AccountServiceImpl implements AccountService {
         }
     }
 
+    @Transactional
+    @Override
+    public Account getEntityAccountById(long id) {
+        try {
+           return accountRepository.findById(id).orElse(null);
+        }catch (Exception e){
+            throw e;
+        }
+    }
+
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     @Override
     public AccountDTO createAccount(AccountDTO account) {
@@ -40,11 +50,13 @@ public class AccountServiceImpl implements AccountService {
         }
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Transactional(value = Transactional.TxType.REQUIRED, rollbackOn = Exception.class)
     @Override
-    public AccountDTO updateAccount(AccountDTO account) {
+    public void updateAccount(Account account) {
         try {
-            return mapToAccountDTO(accountRepository.save(mapToAccount(account)));
+            account.setVersion(account.getVersion() + 1);
+            accountRepository.save(account);
+            mapToAccountDTO(account);
         }catch (Exception e){
             throw e;
         }

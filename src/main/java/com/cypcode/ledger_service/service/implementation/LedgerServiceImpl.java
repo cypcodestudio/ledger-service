@@ -4,8 +4,8 @@ import com.cypcode.ledger_service.common.EAccountType;
 import com.cypcode.ledger_service.common.ETransactionStatus;
 import com.cypcode.ledger_service.common.exception.AccountNotFoundException;
 import com.cypcode.ledger_service.common.exception.InsufficienetFundsException;
+import com.cypcode.ledger_service.entity.Account;
 import com.cypcode.ledger_service.entity.LedgerEntry;
-import com.cypcode.ledger_service.entity.dto.AccountDTO;
 import com.cypcode.ledger_service.entity.dto.LedgerEntryDTO;
 import com.cypcode.ledger_service.entity.dto.TransferDTO;
 import com.cypcode.ledger_service.repository.ILedgerRepository;
@@ -14,6 +14,9 @@ import com.cypcode.ledger_service.service.LedgerService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.util.Calendar;
@@ -28,7 +31,7 @@ public class LedgerServiceImpl implements LedgerService {
     @Autowired
     private AccountService accountService;
 
-    @Transactional(Transactional.TxType.MANDATORY)
+    @Transactional
     @Override
     public LedgerEntryDTO createLedgerEntry(LedgerEntryDTO ledgerEntry) {
         try {
@@ -38,7 +41,7 @@ public class LedgerServiceImpl implements LedgerService {
         }
     }
 
-    @Transactional(Transactional.TxType.SUPPORTS)
+    @Transactional
     @Override
     public LedgerEntryDTO getLedgerEntryById(Long id) {
        try {
@@ -65,7 +68,7 @@ public class LedgerServiceImpl implements LedgerService {
         }
     }
 
-    @Transactional(Transactional.TxType.REQUIRED)
+    @Transactional
     @Override
     public LedgerEntryDTO updateLedgerEntry(LedgerEntryDTO ledgerEntry) {
         try {
@@ -75,11 +78,12 @@ public class LedgerServiceImpl implements LedgerService {
         }
     }
 
-    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    @Retryable(value = {ObjectOptimisticLockingFailureException.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000))
+    @Transactional(value = Transactional.TxType.REQUIRES_NEW, rollbackOn = Exception.class)
     @Override
     public String transfer(TransferDTO transfer) {
         try {
-            AccountDTO fromAccount = accountService.getAccountById(transfer.getFromAccountId());
+            Account fromAccount = accountService.getEntityAccountById(transfer.getFromAccountId());
             if(fromAccount == null){
                 throw new AccountNotFoundException(String.format("Account not found for account id: %s", transfer.getFromAccountId()));
             }
@@ -87,17 +91,17 @@ public class LedgerServiceImpl implements LedgerService {
                 throw new InsufficienetFundsException(String.format("Insufficient funds for account id: %s", transfer.getFromAccountId()));
             }
 
-            AccountDTO toAccount = accountService.getAccountById(transfer.getToAccountId());
+            Account toAccount = accountService.getEntityAccountById(transfer.getToAccountId());
             if(toAccount == null){
                 throw new AccountNotFoundException(String.format("Account not found for account id: %s", transfer.getToAccountId()));
             }
 
             fromAccount.setBalance(fromAccount.getBalance().subtract(transfer.getAmount()));
-            toAccount.setBalance(toAccount.getBalance().add(transfer.getAmount()));
-
             accountService.updateAccount(fromAccount);
+            toAccount.setBalance(toAccount.getBalance().add(transfer.getAmount()));
+            toAccount.setVersion(toAccount.getVersion() + 1);
             accountService.updateAccount(toAccount);
-
+            log.info("Transfer successful");
             return ETransactionStatus.SUCCESS.getStatus();
         }catch (Exception e){
             log.error("Failed transfer ", e);
@@ -122,10 +126,10 @@ public class LedgerServiceImpl implements LedgerService {
         }
     }
 
-    @Transactional(Transactional.TxType.REQUIRED)
+    @Transactional
     @Override
     public void deleteLedgerEntryById(Long id) {
-
+        ledgerRepository.deleteById(id);
     }
 
     @Override
