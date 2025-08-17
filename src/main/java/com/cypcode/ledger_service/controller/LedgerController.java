@@ -1,6 +1,7 @@
 package com.cypcode.ledger_service.controller;
 
 import com.cypcode.ledger_service.common.exception.AccountNotFoundException;
+import com.cypcode.ledger_service.common.exception.IdempotencyException;
 import com.cypcode.ledger_service.common.exception.InsufficienetFundsException;
 import com.cypcode.ledger_service.entity.dto.TransferDTO;
 import com.cypcode.ledger_service.service.LedgerService;
@@ -36,6 +37,8 @@ public class LedgerController {
                     content = @Content(schema = @Schema())),
             @ApiResponse(responseCode = "412", description = "Insufficient funds in account",
                     content = @Content(schema = @Schema())),
+            @ApiResponse(responseCode = "429", description = "Transfer id already processed",
+                    content = @Content(schema = @Schema())),
             @ApiResponse(responseCode = "500", description = "internal server error",
                     content = @Content(schema = @Schema()))
     })
@@ -50,6 +53,9 @@ public class LedgerController {
         }
         catch (InsufficienetFundsException e){
             return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED).body(e.getMessage());
+        }
+        catch (IdempotencyException e){
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(e.getMessage());
         }
         catch (Exception e){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());

@@ -3,6 +3,7 @@ package com.cypcode.ledger_service.service.implementation;
 import com.cypcode.ledger_service.common.EAccountType;
 import com.cypcode.ledger_service.common.ETransactionStatus;
 import com.cypcode.ledger_service.common.exception.AccountNotFoundException;
+import com.cypcode.ledger_service.common.exception.IdempotencyException;
 import com.cypcode.ledger_service.common.exception.InsufficienetFundsException;
 import com.cypcode.ledger_service.entity.Account;
 import com.cypcode.ledger_service.entity.LedgerEntry;
@@ -20,6 +21,9 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.util.Calendar;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -56,11 +60,13 @@ public class LedgerServiceImpl implements LedgerService {
     }
 
     @Override
-    public LedgerEntryDTO getLedgerEntryByTransferId(Long id) {
+    public List<LedgerEntryDTO> getLedgerEntryByTransferId(Long id) {
         try{
-            LedgerEntry entry = ledgerRepository.findLedgerEntryByTransferId(id);
-            if (entry != null) {
-                return mapToLedgerEntryDTO(entry);
+            List<LedgerEntry> entryList = ledgerRepository.findLedgerEntryByTransferId(id);
+            if (entryList != null) {
+                return entryList.stream()
+                        .map(this::mapToLedgerEntryDTO)
+                        .collect(Collectors.toList());
             }
             return null;
         }catch (Exception e){
@@ -83,26 +89,31 @@ public class LedgerServiceImpl implements LedgerService {
     @Override
     public String transfer(TransferDTO transfer) {
         try {
-            Account fromAccount = accountService.getEntityAccountById(transfer.getFromAccountId());
-            if(fromAccount == null){
-                throw new AccountNotFoundException(String.format("Account not found for account id: %s", transfer.getFromAccountId()));
-            }
-            if(fromAccount.getBalance().doubleValue() < transfer.getAmount().doubleValue()){
-                throw new InsufficienetFundsException(String.format("Insufficient funds for account id: %s", transfer.getFromAccountId()));
-            }
+            List<LedgerEntry> ledgerEntryList = ledgerRepository.findLedgerEntryByTransferId(transfer.getTransferId());
+            if (ledgerEntryList != null) {
+                throw new IdempotencyException("Transfer already processed");
+            }else{
+                Account fromAccount = accountService.getEntityAccountById(transfer.getFromAccountId());
+                if(fromAccount == null){
+                    throw new AccountNotFoundException(String.format("Account not found for account id: %s", transfer.getFromAccountId()));
+                }
+                if(fromAccount.getBalance().doubleValue() < transfer.getAmount().doubleValue()){
+                    throw new InsufficienetFundsException(String.format("Insufficient funds for account id: %s", transfer.getFromAccountId()));
+                }
 
-            Account toAccount = accountService.getEntityAccountById(transfer.getToAccountId());
-            if(toAccount == null){
-                throw new AccountNotFoundException(String.format("Account not found for account id: %s", transfer.getToAccountId()));
-            }
+                Account toAccount = accountService.getEntityAccountById(transfer.getToAccountId());
+                if(toAccount == null){
+                    throw new AccountNotFoundException(String.format("Account not found for account id: %s", transfer.getToAccountId()));
+                }
 
-            fromAccount.setBalance(fromAccount.getBalance().subtract(transfer.getAmount()));
-            accountService.updateAccount(fromAccount);
-            toAccount.setBalance(toAccount.getBalance().add(transfer.getAmount()));
-            toAccount.setVersion(toAccount.getVersion() + 1);
-            accountService.updateAccount(toAccount);
-            log.info("Transfer successful");
-            return ETransactionStatus.SUCCESS.getStatus();
+                fromAccount.setBalance(fromAccount.getBalance().subtract(transfer.getAmount()));
+                accountService.updateAccount(fromAccount);
+                toAccount.setBalance(toAccount.getBalance().add(transfer.getAmount()));
+                toAccount.setVersion(toAccount.getVersion() + 1);
+                accountService.updateAccount(toAccount);
+                log.info("Transfer successful");
+                return ETransactionStatus.SUCCESS.getStatus();
+            }
         }catch (Exception e){
             log.error("Failed transfer ", e);
             return  ETransactionStatus.FAILURE.getStatus();
