@@ -28,7 +28,7 @@ jobs:
                   data = yaml.safe_load(f)
                   # Accessing the 'private' key from the YAML
                   tag = data.get('tag', 'null')
-                  if(tag != 'null'):
+                  if tag == 'null':
                     print('The tag is null NK')
                   print(f'Found tag: {tag}')
           else:
