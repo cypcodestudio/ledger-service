@@ -27,9 +27,9 @@ jobs:
               with open(file_path, 'r') as f:
                   data = yaml.safe_load(f)
                   # Accessing the 'private' key from the YAML
-                  tag = data.get('tag', 'null')
-                  if tag == 'null':
-                    print('The tag is null NK')
+                  tag = data.get('private', 'null')
+                  if tag != 'null':
+                    print('The tag is found NK')
                   print(f'Found tag: {tag}')
           else:
               print(f'Error: File not found at {os.path.abspath(file_path)}')
