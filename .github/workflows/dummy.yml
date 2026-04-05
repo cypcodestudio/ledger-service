@@ -1,17 +1,35 @@
 name: Check tag
-on: workflow_dispatch
+
+on: 
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Run a script with a secret
+      # 1. Pull the code so the runner can see swagger.yml
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract tag from swagger.yml
         env:
           CYPCODE_ORG_NAME: ${{ secrets.CYPCODE_ORG_NAME }}
         run: |
           python -c "
           import yaml
-          with open('../swagger.yml', 'r') as f:
-              data = yaml.safe_load(f)
-              tag = data.get('private', 'not found')
-              print(f'Found tag: {tag}')
+          import os
+
+          # If swagger.yml is in the root, use 'swagger.yml'
+          # If it is in a folder, use 'path/to/swagger.yml'
+          file_path = 'swagger.yml' 
+
+          if os.path.exists(file_path):
+              with open(file_path, 'r') as f:
+                  data = yaml.safe_load(f)
+                  # Accessing the 'private' key from the YAML
+                  tag = data.get('private', 'not found')
+                  print(f'Found tag: {tag}')
+          else:
+              print(f'Error: File not found at {os.path.abspath(file_path)}')
+              exit(1)
           "
