@@ -1,0 +1,10 @@
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run a script with a secret
+        env:
+          CYPCODE_ORG_NAME: ${{ secrets.CYPCODE_ORG_NAME }}
+        run: |
+          echo "The token is now available as an env var, but GitHub will mask it in logs."
+          python my_script.py
