@@ -12,6 +12,6 @@ jobs:
           import yaml
           with open('swagger.yml', 'r') as f:
               data = yaml.safe_load(f)
-              tag = data.get('tag', 'not found')
+              tag = data.get('private', 'not found')
               print(f'Found tag: {tag}')
           "
