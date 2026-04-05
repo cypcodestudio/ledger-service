@@ -19,7 +19,7 @@ jobs:
               with open('swagger.yml', 'r') as f:
                   data = yaml.safe_load(f)
               
-              tag = data.get('private')
+              tag = data.get('internal')
               
               if tag:
                   print(f'Tag found: {tag}')
