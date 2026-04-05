@@ -8,4 +8,10 @@ jobs:
         env:
           CYPCODE_ORG_NAME: ${{ secrets.CYPCODE_ORG_NAME }}
         run: |
-          echo "The token is now available as an env var, but GitHub will mask it in logs."
+          python -c "
+          import yaml
+          with open('swagger.yml', 'r') as f:
+              data = yaml.safe_load(f)
+              tag = data.get('tag', 'not found')
+              print(f'Found tag: {tag}')
+          "
