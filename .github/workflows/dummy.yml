@@ -1,37 +1,45 @@
-name: Check tag
-
-on: 
-  workflow_dispatch:
+name: Check Tag and Call API
+on: workflow_dispatch
 
 jobs:
-  build:
+  api-check:
     runs-on: ubuntu-latest
     steps:
-      # 1. Pull the code so the runner can see swagger.yml
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract tag from swagger.yml
-        env:
-          CYPCODE_ORG_NAME: ${{ secrets.CYPCODE_ORG_NAME }}
+      - name: Extract tag and set output
+        id: check_tag # We need this ID to reference the output later
         run: |
           python -c "
           import yaml
           import os
 
-          # If swagger.yml is in the root, use 'swagger.yml'
-          # If it is in a folder, use 'path/to/swagger.yml'
-          file_path = 'swagger.yml' 
-
-          if os.path.exists(file_path):
-              with open(file_path, 'r') as f:
+          try:
+              with open('swagger.yml', 'r') as f:
                   data = yaml.safe_load(f)
-                  # Accessing the 'private' key from the YAML
-                  tag = data.get('private', 'null')
-                  if tag != 'null':
-                    print('The tag is found NK')
-                  print(f'Found tag: {tag}')
-          else:
-              print(f'Error: File not found at {os.path.abspath(file_path)}')
-              exit(1)
+              
+              tag = data.get('private')
+              
+              if tag:
+                  print(f'Tag found: {tag}')
+                  # This line saves the tag so other steps can see it
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                      f.write(f'found=true\n')
+                      f.write(f'tag_value={tag}\n')
+              else:
+                  print('Tag not found.')
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                      f.write(f'found=false\n')
+          except FileNotFoundError:
+              print('File not found.')
           "
+
+      - name: Run API Call
+        # This step ONLY runs if the Python script found the tag
+        if: steps.check_tag.outputs.found == 'true'
+        env:
+          ORG_NAME: ${{ secrets.CYPCODE_ORG_NAME }}
+          TAG_VAL: ${{ steps.check_tag.outputs.tag_value }}
+        run: |
+          echo "Tag was found ($TAG_VAL). Triggering API call..."
