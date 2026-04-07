@@ -8,7 +8,7 @@ jobs:
       - uses: actions/checkout@v4 # Always checkout first!
       
       - name: Use the Team Action
-        uses: cypcode/check-tag-action@v1 # Point to your repo and version
+        uses: cypcodestudio/cypcode-validate-action@v1 # Point to your repo and version
         with:
           file_path: 'swagger.yaml'
           api_token: ${{ secrets.TEAM_API_TOKEN }}
