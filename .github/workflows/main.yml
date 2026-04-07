@@ -10,5 +10,5 @@ jobs:
       - name: Use the Team Action
         uses: cypcodestudio/cypcode-validate-action@v1 # Point to your repo and version
         with:
-          file_path: 'swagger.yaml'
+          file_path: 'swagger.yml'
           api_token: ${{ secrets.TEAM_API_TOKEN }}
