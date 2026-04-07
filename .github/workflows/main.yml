@@ -1,3 +1,6 @@
+name: Call internal metadata
+on: workflow_dispatch
+
 jobs:
   my-job:
     runs-on: ubuntu-latest
